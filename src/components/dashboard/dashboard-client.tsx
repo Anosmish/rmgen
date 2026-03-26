@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { GitBranch, RefreshCw, Sparkles, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +10,7 @@ import { RepoFiltersPanel } from "@/components/dashboard/repo-filters";
 import { RepoList } from "@/components/dashboard/repo-list";
 import { ReadmeWorkspace } from "@/components/generator/readme-workspace";
 import { GitHubRepo, RepoFilters } from "@/types/github";
+import { RepoAnalysisMetadata } from "@/types/repo-analyzer";
 import { ReadmeTemplate } from "@/types/readme";
 import { downloadTextFile } from "@/utils/download";
 
@@ -42,6 +44,8 @@ interface ReposApiResponse {
 interface GenerateApiResponse {
   readme?: string;
   remainingGenerations?: number;
+  analysis?: RepoAnalysisMetadata;
+  analysisWarning?: string;
   error?: string;
 }
 
@@ -64,6 +68,7 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
     "docs: update README.md with AI GitHub README Generator",
   );
   const [remainingGenerations, setRemainingGenerations] = useState<number | null>(null);
+  const [analysis, setAnalysis] = useState<RepoAnalysisMetadata | null>(null);
 
   const [isLoadingRepos, setIsLoadingRepos] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -152,6 +157,12 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
 
       setReadme(payload.readme);
       setRemainingGenerations(payload.remainingGenerations ?? null);
+      setAnalysis(payload.analysis ?? null);
+
+      if (payload.analysisWarning) {
+        toast.warning(payload.analysisWarning);
+      }
+
       toast.success("README generated successfully.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "README generation failed.");
@@ -338,7 +349,7 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
                 >
                   <Sparkles className="size-4" />
-                  {readme ? "Regenerate README" : "Generate README"}
+                  {readme ? "Regenerate with improvements" : "Generate README"}
                 </button>
               </div>
             </div>
@@ -363,10 +374,61 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
                 </span>
               ) : null}
             </div>
+
+            {analysis ? (
+              <div className="rounded-xl border border-slate-700/80 bg-slate-950/50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Auto Repository Analysis
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
+                  <span className="rounded-full border border-cyan-400/40 bg-cyan-500/10 px-2 py-1 text-cyan-200">
+                    {analysis.projectType}
+                  </span>
+                  {analysis.detectedStack.slice(0, 12).map((stackItem) => (
+                    <span
+                      key={stackItem}
+                      className="rounded-full border border-slate-700 bg-slate-900 px-2 py-1"
+                    >
+                      {stackItem}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {readme ? (
             <>
+              {analysis ? (
+                <div className="space-y-3 rounded-2xl border border-slate-800/80 bg-slate-900/70 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-slate-100">Screenshots Preview</h3>
+                    <span className="text-xs text-slate-400">
+                      {analysis.hasScreenshots
+                        ? "Detected from repository assets"
+                        : "Using fallback preview image"}
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {analysis.screenshots.slice(0, 6).map((url, index) => (
+                      <div
+                        key={`${url}-${index}`}
+                        className="overflow-hidden rounded-xl border border-slate-700 bg-slate-950/80"
+                      >
+                        <Image
+                          src={url}
+                          alt={`Screenshot preview ${index + 1}`}
+                          width={1024}
+                          height={512}
+                          className="h-36 w-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <ReadmeWorkspace
                 markdown={readme}
                 onMarkdownChange={setReadme}

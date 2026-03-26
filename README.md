@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI GitHub README Generator
 
 A production-ready Next.js 14 web application that lets users sign in with GitHub, browse repositories, generate polished README.md files using Groq, preview and edit markdown live, and commit README directly to GitHub.
@@ -141,3 +142,7 @@ npm run build
 - GitHub `repo` scope is required to list private repositories and commit README updates.
 - Daily generation limit is currently in-memory and resets when server instance restarts.
 - For production SaaS billing/limits, replace in-memory limiter with Redis or a database-backed counter.
+=======
+# rmgen
+A readme.md file genrator for our repos
+>>>>>>> e8f66a2876130c8df02e32504e1f6feba9e71d42

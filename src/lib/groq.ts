@@ -1,7 +1,9 @@
 import { GitHubRepoDetails } from "@/types/github";
+import { RepoAnalysisMetadata } from "@/types/repo-analyzer";
 import { ReadmeTemplate } from "@/types/readme";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const FALLBACK_PREVIEW_IMAGE = "https://via.placeholder.com/800x400?text=Project+Preview";
 
 const TEMPLATE_GUIDANCE: Record<ReadmeTemplate, string> = {
   default: "Use a balanced professional style suitable for most software repositories.",
@@ -14,31 +16,64 @@ const TEMPLATE_GUIDANCE: Record<ReadmeTemplate, string> = {
 
 function createPrompt(
   repository: GitHubRepoDetails,
+  analysis: RepoAnalysisMetadata,
   template: ReadmeTemplate,
   customContext?: string,
 ): string {
-  const topics = repository.topics.length ? repository.topics.join(", ") : "None provided";
-  const languageBreakdown = repository.language_breakdown.length
-    ? repository.language_breakdown.join(", ")
-    : repository.language ?? "Unknown";
+  const topics = repository.topics.length ? repository.topics.join(", ") : "Not specified";
+  const languageBreakdown =
+    repository.language_breakdown.length > 0
+      ? repository.language_breakdown.join(", ")
+      : repository.language ?? "Unknown";
+  const stack = analysis.detectedStack.length
+    ? analysis.detectedStack.join(", ")
+    : languageBreakdown;
+  const dependencies = analysis.dependencies.length
+    ? analysis.dependencies.slice(0, 90).join(", ")
+    : "No explicit dependencies detected";
+  const screenshotList = analysis.screenshots.length
+    ? analysis.screenshots.join("\n")
+    : FALLBACK_PREVIEW_IMAGE;
+  const heroImage = analysis.screenshots[0] ?? FALLBACK_PREVIEW_IMAGE;
+  const topFolders = analysis.topLevelFolders.length
+    ? analysis.topLevelFolders.join(", ")
+    : "No top-level folders detected";
 
   return [
-    "Generate a complete professional README.md in markdown only.",
-    "The output must include these sections in this order:",
-    "1) Title",
-    "2) Description",
-    "3) Badges",
-    "4) Features",
-    "5) Tech Stack",
-    "6) Installation",
-    "7) Usage",
-    "8) Contributing",
-    "9) License",
+    "Generate a production-grade README.md in pure markdown (no code fences around the full output).",
+    "Write like a senior developer and technical product architect.",
+    "Make it GitHub trending quality: sharp hook, concrete value, and realistic implementation details.",
+    "Avoid generic filler language at all costs.",
+    "",
+    "Mandatory structure to include in this order:",
+    "1) Title + one-line tagline",
+    "2) Clean badges line",
+    "3) Hero preview image",
+    "4) Introduction / strong hook",
+    "5) Problem -> Solution",
+    "6) Why this project matters",
+    "7) Features",
+    "8) Tech Stack",
+    "9) Installation",
+    "10) Usage",
+    "11) Project structure (when meaningful)",
+    "12) 📸 Screenshots / Demo",
+    "13) Contributing",
+    "14) License",
+    "",
+    "Hard constraints:",
+    "- Badges must be valid markdown images using shields.io.",
+    "- Include at least 3 and at most 6 badges.",
+    "- Include exactly one hero image near the top.",
+    "- Use realistic commands and examples based on detected stack.",
+    "- Do not fabricate non-obvious project internals; infer responsibly.",
+    "- Maintain clear, skimmable section formatting.",
     "",
     "Repository context:",
     `- Name: ${repository.name}`,
     `- Full Name: ${repository.full_name}`,
-    `- Description: ${repository.description ?? "No description provided."}`,
+    `- Description: ${repository.description ?? "No explicit description provided."}`,
+    `- Project Type (inferred): ${analysis.projectType}`,
     `- Primary Language: ${repository.language ?? "Unknown"}`,
     `- Languages: ${languageBreakdown}`,
     `- Topics: ${topics}`,
@@ -49,16 +84,22 @@ function createPrompt(
     `- Default Branch: ${repository.default_branch}`,
     `- Homepage: ${repository.homepage ?? "Not set"}`,
     `- License: ${repository.license?.name ?? "No license specified"}`,
+    `- Detected Stack: ${stack}`,
+    `- Detected Frameworks: ${analysis.frameworks.join(", ") || "None"}`,
+    `- Databases/Tools: ${analysis.databasesAndTools.join(", ") || "None"}`,
+    `- Dependency Signals: ${dependencies}`,
+    `- Top-level folders: ${topFolders}`,
+    `- Existing README summary: ${analysis.existingReadmeSummary ?? "None"}`,
+    `- Hero image URL to use by default: ${heroImage}`,
+    `- Screenshot URLs to include in the screenshots section:\n${screenshotList}`,
     "",
     `Style guidance: ${TEMPLATE_GUIDANCE[template]}`,
     customContext ? `Additional project notes: ${customContext}` : "",
     "",
-    "Constraints:",
-    "- Return plain markdown content only, no code fences.",
-    "- Keep language concise, technical, and actionable.",
-    "- Include realistic command examples.",
-    "- If license is unknown, use MIT as a recommendation and mention it clearly.",
-    "- Add useful badges for build, license, language, and stars.",
+    "Output quality bar:",
+    "- Crisp, technical, and compelling narrative.",
+    "- Highly actionable setup and usage docs.",
+    "- Reader should understand value in under 20 seconds.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -76,6 +117,7 @@ function stripMarkdownCodeFence(markdown: string): string {
 
 export async function generateReadmeFromGroq(params: {
   repository: GitHubRepoDetails;
+  analysis: RepoAnalysisMetadata;
   template: ReadmeTemplate;
   customContext?: string;
 }): Promise<string> {
@@ -84,7 +126,7 @@ export async function generateReadmeFromGroq(params: {
     throw new Error("GROQ_API_KEY is missing.");
   }
 
-  const { repository, template, customContext } = params;
+  const { repository, analysis, template, customContext } = params;
 
   const response = await fetch(GROQ_API_URL, {
     method: "POST",
@@ -94,17 +136,17 @@ export async function generateReadmeFromGroq(params: {
     },
     body: JSON.stringify({
       model: "llama3-70b-8192",
-      temperature: 0.35,
-      max_tokens: 2200,
+      temperature: 0.7,
+      max_tokens: 3000,
       messages: [
         {
           role: "system",
           content:
-            "You are a senior developer technical writer. Produce production-grade README.md files.",
+            "You are an elite senior software engineer and technical writer producing viral, developer-trusted README.md files.",
         },
         {
           role: "user",
-          content: createPrompt(repository, template, customContext),
+          content: createPrompt(repository, analysis, template, customContext),
         },
       ],
     }),

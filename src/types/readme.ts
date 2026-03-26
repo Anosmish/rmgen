@@ -1,3 +1,5 @@
+import type { RepoAnalysisMetadata } from "@/types/repo-analyzer";
+
 export type ReadmeTemplate = "default" | "startup" | "ai" | "library";
 
 export interface GenerateReadmeRequest {
@@ -18,4 +20,6 @@ export interface CommitReadmeRequest {
 export interface GenerateReadmeResponse {
   readme: string;
   remainingGenerations: number;
+  analysis?: RepoAnalysisMetadata;
+  analysisWarning?: string;
 }

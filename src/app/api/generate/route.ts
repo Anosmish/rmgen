@@ -3,8 +3,10 @@ import { z } from "zod";
 
 import { fetchRepoDetails, GitHubApiError } from "@/lib/github";
 import { generateReadmeFromGroq } from "@/lib/groq";
+import { analyzeRepository } from "@/lib/repo-analyzer";
 import { getAuthSession } from "@/lib/session";
 import { consumeDailyUsageLimit } from "@/lib/usage-limit";
+import { RepoAnalysisMetadata } from "@/types/repo-analyzer";
 
 const generateReadmeSchema = z.object({
   owner: z.string().min(1),
@@ -54,8 +56,38 @@ export async function POST(request: Request) {
       session.accessToken,
     );
 
+    let analysisWarning: string | undefined;
+    let analysis: RepoAnalysisMetadata;
+
+    try {
+      analysis = await analyzeRepository({
+        owner: parsed.data.owner,
+        repo: parsed.data.repo,
+        accessToken: session.accessToken,
+        defaultBranch: repository.default_branch,
+      });
+    } catch (error) {
+      analysisWarning =
+        "Repository analysis partially failed. README generation continued with minimal metadata.";
+
+      analysis = {
+        projectType: "Web app",
+        detectedStack: repository.language ? [repository.language] : [],
+        dependencies: [],
+        hasScreenshots: false,
+        screenshots: ["https://via.placeholder.com/800x400?text=Project+Preview"],
+        frameworks: [],
+        databasesAndTools: [],
+        existingReadmeSummary: null,
+        topLevelFolders: [],
+      };
+
+      console.error("Repository analyzer fallback triggered:", error);
+    }
+
     const readme = await generateReadmeFromGroq({
       repository,
+      analysis,
       template: parsed.data.template,
       customContext: parsed.data.customContext,
     });
@@ -64,6 +96,8 @@ export async function POST(request: Request) {
       {
         readme,
         remainingGenerations: usage.remaining,
+        analysis,
+        analysisWarning,
       },
       { status: 200 },
     );

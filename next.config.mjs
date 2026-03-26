@@ -14,6 +14,14 @@ const nextConfig = {
 				protocol: "https",
 				hostname: "*.githubusercontent.com",
 			},
+			{
+				protocol: "https",
+				hostname: "raw.githubusercontent.com",
+			},
+			{
+				protocol: "https",
+				hostname: "via.placeholder.com",
+			},
 		],
 	},
 };
