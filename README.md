@@ -1,36 +1,143 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# AI GitHub README Generator
 
-## Getting Started
+A production-ready Next.js 14 web application that lets users sign in with GitHub, browse repositories, generate polished README.md files using Groq, preview and edit markdown live, and commit README directly to GitHub.
 
-First, run the development server:
+## Tech Stack
+
+- Frontend: Next.js 14 App Router + TypeScript + Tailwind CSS
+- Backend: Next.js route handlers (API routes)
+- Auth: NextAuth (GitHub OAuth)
+- AI: Groq OpenAI-compatible chat endpoint (`llama3-70b-8192`)
+- Markdown rendering: `react-markdown`
+- Icons: `lucide-react`
+- Notifications: `sonner`
+
+## Features
+
+- GitHub OAuth login with secure NextAuth session
+- User profile display and protected dashboard routes
+- Repository listing (public/private) with search + filters
+- README generation from selected repository context via Groq
+- Template modes: `default`, `startup`, `ai`, `library`
+- Live markdown preview + editable markdown textarea
+- Copy markdown to clipboard
+- Download as `README.md`
+- Push directly to GitHub via:
+  - `PUT /repos/{owner}/{repo}/contents/README.md`
+  - Handles create and update flows automatically
+- Error handling for invalid payloads, API failures, auth failures, and GitHub rate limits
+- Basic SaaS-style daily generation limit (in-memory)
+
+## Project Structure
+
+```text
+.
+├─ .env.example
+├─ middleware.ts
+├─ src
+│  ├─ app
+│  │  ├─ api
+│  │  │  ├─ auth/[...nextauth]/route.ts
+│  │  │  ├─ repos/route.ts
+│  │  │  ├─ generate/route.ts
+│  │  │  └─ commit/route.ts
+│  │  ├─ auth/error/page.tsx
+│  │  ├─ commit/page.tsx
+│  │  ├─ dashboard/loading.tsx
+│  │  ├─ dashboard/page.tsx
+│  │  ├─ generate/page.tsx
+│  │  ├─ login/page.tsx
+│  │  ├─ repos/page.tsx
+│  │  ├─ globals.css
+│  │  ├─ layout.tsx
+│  │  └─ page.tsx
+│  ├─ components
+│  │  ├─ auth/sign-in-button.tsx
+│  │  ├─ dashboard/dashboard-client.tsx
+│  │  ├─ dashboard/repo-card.tsx
+│  │  ├─ dashboard/repo-filters.tsx
+│  │  ├─ dashboard/repo-list.tsx
+│  │  ├─ generator/readme-preview.tsx
+│  │  ├─ generator/readme-workspace.tsx
+│  │  ├─ layout/app-background.tsx
+│  │  ├─ layout/navbar.tsx
+│  │  ├─ providers/session-provider.tsx
+│  │  ├─ providers/toast-provider.tsx
+│  │  └─ ui/loading-skeleton.tsx
+│  ├─ lib
+│  │  ├─ auth.ts
+│  │  ├─ github.ts
+│  │  ├─ groq.ts
+│  │  ├─ session.ts
+│  │  └─ usage-limit.ts
+│  ├─ types
+│  │  ├─ github.ts
+│  │  ├─ next-auth.d.ts
+│  │  └─ readme.ts
+│  └─ utils
+│     ├─ cn.ts
+│     └─ download.ts
+└─ public/avatar-fallback.svg
+```
+
+## Environment Variables
+
+Create `.env.local`:
+
+```bash
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=http://localhost:3000
+GROQ_API_KEY=
+```
+
+## Local Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create GitHub OAuth App:
+- Homepage URL: `http://localhost:3000`
+- Authorization callback URL: `http://localhost:3000/api/auth/callback/github`
+
+3. Fill in `.env.local`.
+
+4. Start development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Quality Checks
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push repository to GitHub.
+2. Import project in Vercel.
+3. Set environment variables in Vercel project settings:
+	- `GITHUB_CLIENT_ID`
+	- `GITHUB_CLIENT_SECRET`
+	- `NEXTAUTH_SECRET`
+	- `NEXTAUTH_URL` (your production URL)
+	- `GROQ_API_KEY`
+4. In GitHub OAuth App settings, add production callback URL:
+	- `https://YOUR_DOMAIN/api/auth/callback/github`
+5. Deploy.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Notes
+
+- GitHub `repo` scope is required to list private repositories and commit README updates.
+- Daily generation limit is currently in-memory and resets when server instance restarts.
+- For production SaaS billing/limits, replace in-memory limiter with Redis or a database-backed counter.
