@@ -1,4 +1,4 @@
-import { Copy, Download } from "lucide-react";
+import { Copy, Download, ExternalLink, Share2 } from "lucide-react";
 
 import { ReadmePreview } from "@/components/generator/readme-preview";
 
@@ -7,11 +7,19 @@ export function ReadmeWorkspace({
   onMarkdownChange,
   onCopy,
   onDownload,
+  onShare,
+  onTweet,
+  isSharing,
+  shareUrl,
 }: {
   markdown: string;
   onMarkdownChange: (next: string) => void;
   onCopy: () => void;
   onDownload: () => void;
+  onShare: () => void;
+  onTweet: () => void;
+  isSharing: boolean;
+  shareUrl: string | null;
 }) {
   return (
     <div className="space-y-4 rounded-2xl border border-slate-800/80 bg-slate-900/70 p-4">
@@ -34,8 +42,41 @@ export function ReadmeWorkspace({
             <Download className="size-3.5" />
             Download
           </button>
+          <button
+            type="button"
+            onClick={onShare}
+            disabled={isSharing}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Share2 className="size-3.5" />
+            {isSharing ? "Creating..." : "Create Share Link"}
+          </button>
+          <button
+            type="button"
+            onClick={onTweet}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200"
+          >
+            <ExternalLink className="size-3.5" />
+            Tweet Launch
+          </button>
         </div>
       </div>
+
+      {shareUrl ? (
+        <div className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">
+            Shareable Link
+          </p>
+          <a
+            href={shareUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 block truncate text-xs text-cyan-100 underline decoration-cyan-300/50 underline-offset-4"
+          >
+            {shareUrl}
+          </a>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="space-y-2">

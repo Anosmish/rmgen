@@ -9,9 +9,12 @@ import { toast } from "sonner";
 import { RepoFiltersPanel } from "@/components/dashboard/repo-filters";
 import { RepoList } from "@/components/dashboard/repo-list";
 import { ReadmeWorkspace } from "@/components/generator/readme-workspace";
+import { TemplateMarketplace } from "@/components/growth/template-marketplace";
+import { TEMPLATE_MARKETPLACE_PRESETS } from "@/lib/template-marketplace";
 import { GitHubRepo, RepoFilters } from "@/types/github";
 import { RepoAnalysisMetadata } from "@/types/repo-analyzer";
 import { ReadmeTemplate } from "@/types/readme";
+import { TemplatePreset } from "@/types/template-marketplace";
 import { downloadTextFile } from "@/utils/download";
 
 const initialFilters: RepoFilters = {
@@ -55,6 +58,12 @@ interface CommitApiResponse {
   error?: string;
 }
 
+interface ShareApiResponse {
+  id?: string;
+  shareUrl?: string;
+  error?: string;
+}
+
 export function DashboardClient({ user }: { user: DashboardUser }) {
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
@@ -69,14 +78,21 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
   );
   const [remainingGenerations, setRemainingGenerations] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<RepoAnalysisMetadata | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
   const [isLoadingRepos, setIsLoadingRepos] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   useEffect(() => {
     void loadRepositories();
   }, []);
+
+  useEffect(() => {
+    setShareUrl(null);
+  }, [selectedRepoFullName]);
 
   async function loadRepositories() {
     setIsLoadingRepos(true);
@@ -158,6 +174,7 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
       setReadme(payload.readme);
       setRemainingGenerations(payload.remainingGenerations ?? null);
       setAnalysis(payload.analysis ?? null);
+      setShareUrl(null);
 
       if (payload.analysisWarning) {
         toast.warning(payload.analysisWarning);
@@ -239,6 +256,84 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
 
     downloadTextFile("README.md", readme);
     toast.success("README.md download started.");
+  }
+
+  function applyTemplatePreset(preset: TemplatePreset) {
+    setActivePresetId(preset.id);
+    setTemplate(preset.template);
+    setCustomContext((previous) => {
+      if (!previous.trim()) {
+        return preset.contextSeed;
+      }
+
+      return `${preset.contextSeed}\n${previous}`;
+    });
+    toast.success(`Applied template preset: ${preset.name}`);
+  }
+
+  async function createShareLink(): Promise<string | null> {
+    if (!selectedRepo) {
+      toast.error("Select a repository first.");
+      return null;
+    }
+
+    if (!readme.trim()) {
+      toast.error("Generate a README before creating a share link.");
+      return null;
+    }
+
+    setIsSharing(true);
+
+    try {
+      const response = await fetch("/api/share", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          readme,
+          repoFullName: selectedRepo.full_name,
+          template,
+        }),
+      });
+
+      const payload = (await response.json()) as ShareApiResponse;
+
+      if (!response.ok || !payload.shareUrl) {
+        throw new Error(payload.error ?? "Failed to create share link.");
+      }
+
+      setShareUrl(payload.shareUrl);
+      toast.success("Share link created.");
+      return payload.shareUrl;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to create share link.");
+      return null;
+    } finally {
+      setIsSharing(false);
+    }
+  }
+
+  async function handleCreateShareLink() {
+    await createShareLink();
+  }
+
+  async function handleTweetLaunch() {
+    if (!selectedRepo) {
+      toast.error("Select a repository first.");
+      return;
+    }
+
+    if (!readme.trim()) {
+      toast.error("Generate a README before tweeting.");
+      return;
+    }
+
+    const resolvedShareUrl = shareUrl ?? (await createShareLink()) ?? selectedRepo.html_url;
+    const tweetText = `Just generated a premium README for ${selectedRepo.full_name} using AI.`;
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(resolvedShareUrl)}&hashtags=${encodeURIComponent("buildinpublic,opensource,github,ai")}`;
+
+    window.open(tweetUrl, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -366,6 +461,12 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
               />
             </div>
 
+            <TemplateMarketplace
+              presets={TEMPLATE_MARKETPLACE_PRESETS}
+              activePresetId={activePresetId}
+              onApplyPreset={applyTemplatePreset}
+            />
+
             <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
               <span>Template: {template}</span>
               {remainingGenerations !== null ? (
@@ -434,6 +535,10 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
                 onMarkdownChange={setReadme}
                 onCopy={() => void handleCopyReadme()}
                 onDownload={handleDownloadReadme}
+                onShare={() => void handleCreateShareLink()}
+                onTweet={() => void handleTweetLaunch()}
+                isSharing={isSharing}
+                shareUrl={shareUrl}
               />
 
               <div className="space-y-3 rounded-2xl border border-slate-800/80 bg-slate-900/70 p-4">
