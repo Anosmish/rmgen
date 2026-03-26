@@ -315,7 +315,7 @@ export async function generateReadmeFromGroq(params: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "llama3-70b-8192",
+      model: "llama-3.1-8b-instant",
       temperature: 0.7,
       max_tokens: 3000,
       messages: [
