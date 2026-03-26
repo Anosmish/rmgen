@@ -6,6 +6,7 @@ import { generateReadmeFromGroq } from "@/lib/groq";
 import { analyzeRepository } from "@/lib/repo-analyzer";
 import { getAuthSession } from "@/lib/session";
 import { consumeDailyUsageLimit } from "@/lib/usage-limit";
+import { GitHubRepoDetails } from "@/types/github";
 import { RepoAnalysisMetadata } from "@/types/repo-analyzer";
 
 const generateReadmeSchema = z.object({
@@ -85,8 +86,19 @@ export async function POST(request: Request) {
       console.error("Repository analyzer fallback triggered:", error);
     }
 
+    const repositoryForPrompt: GitHubRepoDetails = {
+      ...repository,
+      full_name: repository.full_name || `${parsed.data.owner}/${parsed.data.repo}`,
+      language: repository.language ?? repository.language_breakdown?.[0] ?? "Unknown",
+      license: repository.license ?? {
+        key: "mit",
+        name: "MIT",
+        spdx_id: "MIT",
+      },
+    };
+
     const readme = await generateReadmeFromGroq({
-      repository,
+      repository: repositoryForPrompt,
       analysis,
       template: parsed.data.template,
       customContext: parsed.data.customContext,
