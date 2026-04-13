@@ -1,29 +1,57 @@
-const usageStore = new Map<string, { date: string; count: number }>();
+import { cookies } from "next/headers";
 
-const DEFAULT_DAILY_LIMIT = 20;
+const DAILY_LIMIT = 5;
+const COOKIE_NAME = "gen_usage";
+
+interface UsageData {
+  date: string;
+  count: number;
+}
 
 function currentDateKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function consumeDailyUsageLimit(
-  key: string,
-  limit = DEFAULT_DAILY_LIMIT,
-): { allowed: boolean; remaining: number } {
-  const today = currentDateKey();
-  const existing = usageStore.get(key);
+function getMidnightExpiry(): Date {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0),
+  );
+}
 
-  if (!existing || existing.date !== today) {
-    usageStore.set(key, { date: today, count: 1 });
-    return { allowed: true, remaining: limit - 1 };
+export function consumeDailyUsageLimit(
+  limit = DAILY_LIMIT,
+): { allowed: boolean; remaining: number } {
+  const cookieStore = cookies();
+  const today = currentDateKey();
+
+  let data: UsageData = { date: today, count: 0 };
+
+  const existing = cookieStore.get(COOKIE_NAME);
+  if (existing) {
+    try {
+      const parsed = JSON.parse(existing.value) as UsageData;
+      if (parsed.date === today) {
+        data = parsed;
+      }
+    } catch {
+      // ignore malformed cookie
+    }
   }
 
-  if (existing.count >= limit) {
+  if (data.count >= limit) {
     return { allowed: false, remaining: 0 };
   }
 
-  existing.count += 1;
-  usageStore.set(key, existing);
+  data.count += 1;
 
-  return { allowed: true, remaining: limit - existing.count };
+  cookieStore.set(COOKIE_NAME, JSON.stringify(data), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    expires: getMidnightExpiry(),
+  });
+
+  return { allowed: true, remaining: limit - data.count };
 }

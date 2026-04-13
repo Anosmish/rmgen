@@ -3,6 +3,7 @@ import { RepoAnalysisMetadata } from "@/types/repo-analyzer";
 import { ReadmeTemplate } from "@/types/readme";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 const FALLBACK_PREVIEW_IMAGE = "https://via.placeholder.com/800x400?text=Project+Preview";
 
 const TEMPLATE_GUIDANCE: Record<ReadmeTemplate, string> = {
@@ -315,9 +316,9 @@ export async function generateReadmeFromGroq(params: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
+      model: GROQ_MODEL,
       temperature: 0.7,
-      max_tokens: 3000,
+      max_tokens: 4096,
       messages: [
         {
           role: "system",
@@ -333,6 +334,10 @@ export async function generateReadmeFromGroq(params: {
   });
 
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error("GROQ_RATE_LIMIT");
+    }
+
     const payload = (await response.json().catch(() => ({}))) as {
       error?: { message?: string };
     };

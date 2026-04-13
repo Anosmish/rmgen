@@ -16,6 +16,9 @@ const generateReadmeSchema = z.object({
   customContext: z.string().max(2000).optional(),
 });
 
+// Hard cap on repository analysis time to keep API responses under Vercel's function timeout.
+const ANALYSIS_TIMEOUT_MS = 8000;
+
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
@@ -39,8 +42,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const usageKey = session.user.id || session.user.email || "anonymous";
-    const usage = consumeDailyUsageLimit(usageKey);
+    const usage = consumeDailyUsageLimit();
 
     if (!usage.allowed) {
       return NextResponse.json(
@@ -61,12 +63,19 @@ export async function POST(request: Request) {
     let analysis: RepoAnalysisMetadata;
 
     try {
-      analysis = await analyzeRepository({
-        owner: parsed.data.owner,
-        repo: parsed.data.repo,
-        accessToken: session.accessToken,
-        defaultBranch: repository.default_branch,
-      });
+      const analysisTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Repository analysis timed out.")), ANALYSIS_TIMEOUT_MS),
+      );
+
+      analysis = await Promise.race([
+        analyzeRepository({
+          owner: parsed.data.owner,
+          repo: parsed.data.repo,
+          accessToken: session.accessToken,
+          defaultBranch: repository.default_branch,
+        }),
+        analysisTimeout,
+      ]);
     } catch (error) {
       analysisWarning =
         "Repository analysis partially failed. README generation continued with minimal metadata.";
@@ -121,6 +130,13 @@ export async function POST(request: Request) {
           rateLimitReset: error.rateLimitReset,
         },
         { status: error.status },
+      );
+    }
+
+    if (error instanceof Error && error.message === "GROQ_RATE_LIMIT") {
+      return NextResponse.json(
+        { error: "AI rate limit hit. Please wait 30 seconds and try again." },
+        { status: 429 },
       );
     }
 

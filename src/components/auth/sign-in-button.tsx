@@ -11,7 +11,7 @@ export function SignInButton({ fullWidth = false }: { fullWidth?: boolean }) {
       type="button"
       onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400",
+        "inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400",
         fullWidth && "w-full",
       )}
     >

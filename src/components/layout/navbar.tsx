@@ -42,7 +42,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/85 px-3 py-2 text-sm font-medium text-slate-100 transition hover:border-rose-500/70 hover:text-rose-200"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/85 px-3 py-2 text-sm font-medium text-slate-100 transition hover:border-rose-500/70 hover:text-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
             >
               <LogOut className="size-4" />
               Sign out
@@ -52,7 +52,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
-            className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+            className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
           >
             <Boxes className="size-4" />
             Sign in

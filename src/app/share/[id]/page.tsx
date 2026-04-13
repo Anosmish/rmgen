@@ -14,7 +14,7 @@ interface SharePageProps {
 }
 
 export async function generateMetadata({ params }: SharePageProps): Promise<Metadata> {
-  const record = getSharedReadmeById(params.id);
+  const record = await getSharedReadmeById(params.id);
 
   if (!record) {
     return {
@@ -29,8 +29,8 @@ export async function generateMetadata({ params }: SharePageProps): Promise<Meta
   };
 }
 
-export default function SharePage({ params }: SharePageProps) {
-  const record = getSharedReadmeById(params.id);
+export default async function SharePage({ params }: SharePageProps) {
+  const record = await getSharedReadmeById(params.id);
 
   if (!record) {
     notFound();

@@ -32,7 +32,7 @@ export function TemplateMarketplace({
               key={preset.id}
               type="button"
               onClick={() => onApplyPreset(preset)}
-              className={`rounded-xl border p-3 text-left transition ${
+              className={`rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
                 active
                   ? "border-cyan-400/60 bg-cyan-500/10"
                   : "border-slate-700 bg-slate-950/60 hover:border-slate-500"
