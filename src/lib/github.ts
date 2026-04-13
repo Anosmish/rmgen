@@ -40,7 +40,7 @@ async function parseErrorMessage(response: Response): Promise<string> {
   return `GitHub API request failed with status ${response.status}.`;
 }
 
-async function githubFetch<T>(
+export async function githubFetch<T>(
   path: string,
   accessToken: string,
   init?: RequestInit,

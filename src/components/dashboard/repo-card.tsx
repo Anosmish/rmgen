@@ -17,7 +17,7 @@ export function RepoCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full rounded-xl border p-4 text-left transition",
+        "w-full rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400",
         selected
           ? "border-cyan-400/70 bg-cyan-500/10 shadow-lg shadow-cyan-950/40"
           : "border-slate-800/80 bg-slate-900/70 hover:border-slate-700 hover:bg-slate-900",

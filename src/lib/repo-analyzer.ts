@@ -1,9 +1,9 @@
-import { GitHubApiError } from "@/lib/github";
+import { GitHubApiError, githubFetch } from "@/lib/github";
 import { ProjectType, RepoAnalysisMetadata } from "@/types/repo-analyzer";
 
 const GITHUB_API_BASE = "https://api.github.com";
-const MAX_SCAN_FILES = 900;
-const MAX_SCAN_DEPTH = 4;
+const MAX_SCAN_FILES = 200;
+const MAX_SCAN_DEPTH = 3;
 const FALLBACK_PREVIEW_IMAGE = "https://via.placeholder.com/800x400?text=Project+Preview";
 
 const IMAGE_EXTENSION_PATTERN = /\.(png|jpe?g|gif|webp|svg)$/i;
@@ -152,52 +152,6 @@ function pickClosestToRoot(paths: string[], target: RegExp): string | null {
   return matched[0] ?? null;
 }
 
-async function parseGitHubError(response: Response): Promise<string> {
-  try {
-    const payload = (await response.json()) as { message?: string };
-    return payload.message ?? `GitHub API failed with status ${response.status}.`;
-  } catch {
-    return `GitHub API failed with status ${response.status}.`;
-  }
-}
-
-function getRateLimitResetIso(value: string | null): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = Number(value);
-  if (Number.isNaN(parsed)) {
-    return undefined;
-  }
-
-  return new Date(parsed * 1000).toISOString();
-}
-
-async function githubJsonFetch<T>(url: string, accessToken: string): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${accessToken}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    const isRateLimited =
-      response.status === 403 && response.headers.get("x-ratelimit-remaining") === "0";
-
-    throw new GitHubApiError(
-      await parseGitHubError(response),
-      response.status,
-      isRateLimited ? getRateLimitResetIso(response.headers.get("x-ratelimit-reset")) : undefined,
-    );
-  }
-
-  return (await response.json()) as T;
-}
-
 async function fetchContentListing(
   owner: string,
   repo: string,
@@ -210,8 +164,8 @@ async function fetchContentListing(
   const url = new URL(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents${pathSegment}`);
   url.searchParams.set("ref", ref);
 
-  const payload = await githubJsonFetch<GitHubContentEntry[] | GitHubContentEntry>(
-    url.toString(),
+  const payload = await githubFetch<GitHubContentEntry[] | GitHubContentEntry>(
+    url.pathname + url.search,
     accessToken,
   );
 
@@ -230,7 +184,7 @@ async function fetchTextFileContent(params: {
   const url = new URL(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${encodedPath}`);
   url.searchParams.set("ref", ref);
 
-  const payload = await githubJsonFetch<GitHubContentEntry>(url.toString(), accessToken);
+  const payload = await githubFetch<GitHubContentEntry>(url.pathname + url.search, accessToken);
 
   if (payload.content && payload.encoding === "base64") {
     return Buffer.from(payload.content, "base64").toString("utf8");
@@ -304,6 +258,7 @@ export async function analyzeRepository(
     }
 
     const items = await fetchContentListing(owner, repo, accessToken, path, defaultBranch);
+    const subdirs: string[] = [];
 
     for (const item of items) {
       if (walkedItems.length >= MAX_SCAN_FILES) {
@@ -317,9 +272,12 @@ export async function analyzeRepository(
       walkedItems.push({ path: item.path, type: item.type });
 
       if (item.type === "dir" && shouldDescendDirectory(item.path, depth)) {
-        await walkDirectory(item.path, depth + 1);
+        subdirs.push(item.path);
       }
     }
+
+    // Parallel fetches at the next depth level
+    await Promise.all(subdirs.map((subdir) => walkDirectory(subdir, depth + 1)));
   }
 
   await walkDirectory("", 0);

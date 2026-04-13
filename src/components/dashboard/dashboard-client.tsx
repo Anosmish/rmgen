@@ -81,6 +81,7 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
+  const [isCommitConfirmOpen, setIsCommitConfirmOpen] = useState(false);
   const [isLoadingRepos, setIsLoadingRepos] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
@@ -353,7 +354,7 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
         <button
           type="button"
           onClick={() => void loadRepositories()}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-400 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
         >
           <RefreshCw className="size-4" />
           Refresh Repositories
@@ -441,7 +442,7 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
                   type="button"
                   onClick={() => void handleGenerateReadme()}
                   disabled={!selectedRepo || isGenerating}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
                 >
                   <Sparkles className="size-4" />
                   {readme ? "Regenerate with improvements" : "Generate README"}
@@ -552,9 +553,9 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
 
                 <button
                   type="button"
-                  onClick={() => void handleCommitReadme()}
+                  onClick={() => setIsCommitConfirmOpen(true)}
                   disabled={isCommitting || !selectedRepo || !readme.trim()}
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
                 >
                   <UploadCloud className="size-4" />
                   {isCommitting ? "Committing..." : "Push README to GitHub"}
@@ -568,6 +569,49 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
           )}
         </div>
       </div>
+
+      {isCommitConfirmOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="commit-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center"
+        >
+          <div
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            onClick={() => setIsCommitConfirmOpen(false)}
+          />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+            <h2 id="commit-dialog-title" className="text-base font-semibold text-slate-100">
+              Confirm Commit
+            </h2>
+            <p className="mt-2 text-sm text-slate-300">
+              This will overwrite the existing README.md in{" "}
+              <span className="font-semibold text-cyan-300">{selectedRepo?.full_name}</span>.
+              Continue?
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsCommitConfirmOpen(false)}
+                className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCommitConfirmOpen(false);
+                  void handleCommitReadme();
+                }}
+                className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -61,12 +61,19 @@ export async function POST(request: Request) {
     let analysis: RepoAnalysisMetadata;
 
     try {
-      analysis = await analyzeRepository({
-        owner: parsed.data.owner,
-        repo: parsed.data.repo,
-        accessToken: session.accessToken,
-        defaultBranch: repository.default_branch,
-      });
+      const analysisTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Repository analysis timed out.")), 8000),
+      );
+
+      analysis = await Promise.race([
+        analyzeRepository({
+          owner: parsed.data.owner,
+          repo: parsed.data.repo,
+          accessToken: session.accessToken,
+          defaultBranch: repository.default_branch,
+        }),
+        analysisTimeout,
+      ]);
     } catch (error) {
       analysisWarning =
         "Repository analysis partially failed. README generation continued with minimal metadata.";
@@ -121,6 +128,13 @@ export async function POST(request: Request) {
           rateLimitReset: error.rateLimitReset,
         },
         { status: error.status },
+      );
+    }
+
+    if (error instanceof Error && error.message === "GROQ_RATE_LIMIT") {
+      return NextResponse.json(
+        { error: "AI rate limit hit. Please wait 30 seconds and try again." },
+        { status: 429 },
       );
     }
 

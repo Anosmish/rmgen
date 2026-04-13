@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const record = createSharedReadme({
+    const record = await createSharedReadme({
       readme: parsed.data.readme,
       repoFullName: parsed.data.repoFullName,
       template: parsed.data.template,

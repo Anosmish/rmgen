@@ -315,9 +315,9 @@ export async function generateReadmeFromGroq(params: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
+      model: "llama-3.3-70b-versatile",
       temperature: 0.7,
-      max_tokens: 3000,
+      max_tokens: 4096,
       messages: [
         {
           role: "system",
@@ -333,6 +333,10 @@ export async function generateReadmeFromGroq(params: {
   });
 
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error("GROQ_RATE_LIMIT");
+    }
+
     const payload = (await response.json().catch(() => ({}))) as {
       error?: { message?: string };
     };
