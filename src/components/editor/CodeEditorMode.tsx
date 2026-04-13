@@ -45,7 +45,9 @@ export function CodeEditorMode({ repo }: { repo: GitHubRepo }) {
   const [loadingFilePath, setLoadingFilePath] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [owner, repoName] = repo.full_name.split("/") as [string, string];
+  const parts = repo.full_name.split("/");
+  const owner = parts[0] ?? "";
+  const repoName = parts[1] ?? "";
 
   const loadTree = useCallback(async () => {
     setIsLoadingTree(true);
@@ -177,7 +179,7 @@ export function CodeEditorMode({ repo }: { repo: GitHubRepo }) {
       setOpenFiles((prev) =>
         prev.map((f) =>
           f.path === path
-            ? { ...f, originalContent: f.content, sha: payload.sha! }
+            ? { ...f, originalContent: f.content, sha: payload.sha ?? f.sha }
             : f,
         ),
       );
