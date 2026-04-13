@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { GitBranch, RefreshCw, Sparkles, UploadCloud } from "lucide-react";
+import { Code2, FileText, GitBranch, RefreshCw, Sparkles, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 
 import { RepoFiltersPanel } from "@/components/dashboard/repo-filters";
 import { RepoList } from "@/components/dashboard/repo-list";
+import { CodeEditorMode } from "@/components/editor/CodeEditorMode";
 import { ReadmeWorkspace } from "@/components/generator/readme-workspace";
 import { TemplateMarketplace } from "@/components/growth/template-marketplace";
 import { TEMPLATE_MARKETPLACE_PRESETS } from "@/lib/template-marketplace";
@@ -16,6 +17,8 @@ import { RepoAnalysisMetadata } from "@/types/repo-analyzer";
 import { ReadmeTemplate } from "@/types/readme";
 import { TemplatePreset } from "@/types/template-marketplace";
 import { downloadTextFile } from "@/utils/download";
+
+type DashboardMode = "readme" | "code";
 
 const initialFilters: RepoFilters = {
   query: "",
@@ -65,6 +68,7 @@ interface ShareApiResponse {
 }
 
 export function DashboardClient({ user }: { user: DashboardUser }) {
+  const [mode, setMode] = useState<DashboardMode>("readme");
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
   const [filters, setFilters] = useState<RepoFilters>(initialFilters);
@@ -361,6 +365,35 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
         </button>
       </div>
 
+      <div className="flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-950/60 p-1">
+        <button
+          type="button"
+          onClick={() => setMode("readme")}
+          className={[
+            "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400",
+            mode === "readme"
+              ? "bg-cyan-500 text-slate-950"
+              : "text-slate-400 hover:bg-slate-800 hover:text-slate-200",
+          ].join(" ")}
+        >
+          <FileText className="size-4" />
+          README Generator
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("code")}
+          className={[
+            "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400",
+            mode === "code"
+              ? "bg-cyan-500 text-slate-950"
+              : "text-slate-400 hover:bg-slate-800 hover:text-slate-200",
+          ].join(" ")}
+        >
+          <Code2 className="size-4" />
+          Code Editor
+        </button>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         <aside className="space-y-4 rounded-2xl border border-slate-800/80 bg-slate-900/70 p-4">
           <RepoFiltersPanel
@@ -418,6 +451,16 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
             )}
           </div>
 
+          {mode === "code" ? (
+            selectedRepo ? (
+              <CodeEditorMode repo={selectedRepo} />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-8 text-center text-sm text-slate-400">
+                Select a repository from the left panel to open the code editor.
+              </div>
+            )
+          ) : (
+            <>
           <div className="space-y-4 rounded-2xl border border-slate-800/80 bg-slate-900/70 p-4">
             <div className="grid gap-3 md:grid-cols-2">
               <div>
@@ -566,6 +609,8 @@ export function DashboardClient({ user }: { user: DashboardUser }) {
             <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-8 text-center text-sm text-slate-400">
               Generate a README to start previewing, editing, downloading, and committing.
             </div>
+          )}
+        </>
           )}
         </div>
       </div>
