@@ -16,7 +16,7 @@ let kvInitPromise: Promise<void> | null = null;
 function ensureKvInitialized(): Promise<void> {
   if (!kvInitPromise) {
     kvInitPromise = (async () => {
-      if (process.env.KV_REST_API_URL || process.env.VERCEL_KV_REST_API_URL) {
+      if (process.env.KV_REST_API_URL) {
         try {
           const mod = await import("@vercel/kv");
           kv = mod.kv as unknown as KvClient;
