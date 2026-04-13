@@ -16,6 +16,9 @@ const generateReadmeSchema = z.object({
   customContext: z.string().max(2000).optional(),
 });
 
+// Hard cap on repository analysis time to keep API responses under Vercel's function timeout.
+const ANALYSIS_TIMEOUT_MS = 8000;
+
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
@@ -39,8 +42,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const usageKey = session.user.id || session.user.email || "anonymous";
-    const usage = consumeDailyUsageLimit(usageKey);
+    const usage = consumeDailyUsageLimit();
 
     if (!usage.allowed) {
       return NextResponse.json(
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
 
     try {
       const analysisTimeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Repository analysis timed out.")), 8000),
+        setTimeout(() => reject(new Error("Repository analysis timed out.")), ANALYSIS_TIMEOUT_MS),
       );
 
       analysis = await Promise.race([

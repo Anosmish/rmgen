@@ -5,25 +5,33 @@ import type { SharedReadmeRecord } from "@/types/share";
 const TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 // Attempt to load Vercel KV; fall back to in-memory if not configured.
-let kv: {
+type KvClient = {
   get: (key: string) => Promise<unknown>;
   set: (key: string, value: unknown, opts: { ex: number }) => Promise<unknown>;
-} | null = null;
+};
 
-(async () => {
-  if (process.env.KV_REST_API_URL || process.env.VERCEL_KV_REST_API_URL) {
-    try {
-      const mod = await import("@vercel/kv");
-      kv = mod.kv as unknown as typeof kv;
-    } catch {
-      console.warn("[share-store] @vercel/kv import failed, falling back to in-memory store.");
-    }
-  } else {
-    console.warn(
-      "[share-store] VERCEL_KV not configured. Falling back to in-memory store (shares will not persist across restarts).",
-    );
+let kv: KvClient | null = null;
+let kvInitPromise: Promise<void> | null = null;
+
+function ensureKvInitialized(): Promise<void> {
+  if (!kvInitPromise) {
+    kvInitPromise = (async () => {
+      if (process.env.KV_REST_API_URL || process.env.VERCEL_KV_REST_API_URL) {
+        try {
+          const mod = await import("@vercel/kv");
+          kv = mod.kv as unknown as KvClient;
+        } catch {
+          console.warn("[share-store] @vercel/kv import failed, falling back to in-memory store.");
+        }
+      } else {
+        console.warn(
+          "[share-store] VERCEL_KV not configured. Falling back to in-memory store (shares will not persist across restarts).",
+        );
+      }
+    })();
   }
-})();
+  return kvInitPromise;
+}
 
 // In-memory fallback
 const MAX_SHARE_ITEMS = 500;
@@ -64,6 +72,7 @@ export async function createSharedReadme(input: {
   template: SharedReadmeRecord["template"];
   createdBy: string;
 }): Promise<SharedReadmeRecord> {
+  await ensureKvInitialized();
   const id = randomUUID().replace(/-/g, "").slice(0, 16);
 
   const record: SharedReadmeRecord = {
@@ -88,6 +97,7 @@ export async function createSharedReadme(input: {
 }
 
 export async function getSharedReadmeById(id: string): Promise<SharedReadmeRecord | null> {
+  await ensureKvInitialized();
   if (kv) {
     const result = await kv.get(`share:${id}`);
     return (result as SharedReadmeRecord | null) ?? null;

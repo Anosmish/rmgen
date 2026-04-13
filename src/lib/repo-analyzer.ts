@@ -2,6 +2,9 @@ import { GitHubApiError, githubFetch } from "@/lib/github";
 import { ProjectType, RepoAnalysisMetadata } from "@/types/repo-analyzer";
 
 const GITHUB_API_BASE = "https://api.github.com";
+// Conservative caps to keep analysis fast and avoid GitHub API rate limits.
+// MAX_SCAN_FILES=200 and MAX_SCAN_DEPTH=3 cover the vast majority of project structures
+// while completing within the API route's 8-second analysis budget.
 const MAX_SCAN_FILES = 200;
 const MAX_SCAN_DEPTH = 3;
 const FALLBACK_PREVIEW_IMAGE = "https://via.placeholder.com/800x400?text=Project+Preview";

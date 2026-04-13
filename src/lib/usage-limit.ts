@@ -20,7 +20,6 @@ function getMidnightExpiry(): Date {
 }
 
 export function consumeDailyUsageLimit(
-  _key: string,
   limit = DAILY_LIMIT,
 ): { allowed: boolean; remaining: number } {
   const cookieStore = cookies();
